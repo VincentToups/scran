@@ -94,6 +94,16 @@ Example
 
     ;;
 
+System Groups
+-------------
+
+Kran is oriented towards groups of systems.  Scran exposes systems directly, if opaquely.  You can easily create system groups like this:
+
+    (define make-system-group list)
+    (define (execute-group group)
+     (map system-execute group))
+
+
 API Documentation
 -----------------
 
