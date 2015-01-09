@@ -73,27 +73,6 @@ Example
     ;; eg: (80 20 70 80 30 0 70 10 20 70)
 
 
-    ;; define two components
-    (define c-growth-stage (component! (lambda (e v) v)))
-    (define c-growth-rate (component! (lambda (e v) v)))
-
-    ;; define a system using these components
-    (define growing-things 
-     (system! (list c-growth-stage c-growth-rate)
-      every: (lambda (e stage rate) 
-       (entity-component-set! e state (+ stage rage)))))
-
-    ;; create some entities
-    (let loop ((i 0))
-       (if (< i 10)
-           (begin (entity! 
-                   (list c-growth-stage 0)
-                   (list c-growth-rate (random-integer 10)))
-                  (loop (+ i 1)))
-           #t))
-
-    ;;
-
 System Groups
 -------------
 
