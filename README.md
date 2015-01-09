@@ -35,26 +35,27 @@ Example
 
     ;; define a system using these components
     (define growing-things 
-    (system! (list c-growth-stage c-growth-rate)
-    every: (lambda (e stage rate) 
-    (entity-component-set! e c-growth-stage (+ stage    rate)))))
+      (system! (list c-growth-stage c-growth-rate)
+       every: 
+       (lambda (e stage rate) 
+        (entity-component-set! e c-growth-stage (+ stage    rate)))))
 
     ;; create some entities
     (let loop ((i 0))
-    (if (< i 10)
-    (begin (entity! 
-    (list c-growth-stage 0)
-    (list c-growth-rate (random-integer 10)))
-    (loop (+ i 1)))
-    #t))
+      (if (< i 10)
+       (begin (entity! 
+        (list c-growth-stage 0)
+        (list c-growth-rate (random-integer 10)))
+        (loop (+ i 1)))
+       #t))
 
     ;; define a utility
 
     (define (get-growth-stages)
-    (system-map-entities 
-    (lambda (e stage rate)
-    stage)
-    growing-things))
+     (system-map-entities 
+      (lambda (e stage rate)
+      stage)
+     growing-things))
 
     ;; show pre-execution stages
     (display (get-growth-stages)) (newline) 
@@ -62,10 +63,10 @@ Example
 
     ;; execute our system a few times
     (let loop ((i 0))
-    (if (< i 10)
-    (begin (system-execute growing-things)
-    (loop (+ i 1)))
-    #t))
+     (if (< i 10)
+      (begin (system-execute growing-things)
+      (loop (+ i 1)))
+     #t))
 
     ;; show post-execution stages
     (display (get-growth-stages)) (newline) 
