@@ -1,3 +1,6 @@
+;; This software is released under the terms of the MIT License.  See
+;; the LICENSE file in this repository.
+
 ;; for debugging - display, newline and flush
 (define (dbg #!rest args)
   (display args)
