@@ -238,6 +238,10 @@
 	(call-with-components f e components-list)))
 
 
+(define (entity-has-been-deleted-from-system? e s)
+  (and (eq? #f (get-system-link-next e s))
+	   (eq? #f (get-system-link-prev e s))
+	   (not (eq? (system-first (vector-ref systems s)) e))))
 ;; apply f for side effects to each entity in s
 ;; use `call-with-system-components` so that f is a function which expects
 ;; the entity itself and then one argument for each
@@ -246,9 +250,38 @@
 (define (system-for-each-entity f s)
   (let* ((si s)
 		 (s (vector-ref systems si)))
+	(letrec ((get-next-node (lambda (previous-nodes)
+							  (cond 
+							   ((eq? previous-nodes '()) 
+								(let ((first (system-first s)))
+								  (if first (get-system-link-next first si) #f)))
+							   ((not (entity-has-been-deleted-from-system? (car previous-nodes) si))
+								;; previous node still in list
+								(get-system-link-next (car previous-nodes) si))
+							   (#t (get-next-node (cdr previous-nodes)))))))
+	  (let loop ((node (system-first s))
+				 (previous-nodes '()))
+   (cond
+	(node (call-with-system-components f node si) 
+		  (if (entity-has-been-deleted-from-system? node si) 
+			  (loop (get-next-node previous-nodes) previous-nodes)
+			  (loop (get-system-link-next node si) (cons node previous-nodes))))
+	(#t #t))))))
+
+;; A sigil value to terminate system-for-each-entity*
+(define scran-stop-value (list 0))
+
+;; Exactly as system-for-each-entity except that if 
+;; f returns scran-stop-value, the iteration is aborted.
+(define (system-for-each-entity* f s)
+  (let* ((si s)
+		 (s (vector-ref systems si)))
 	(let loop ((node (system-first s)))
 	  (cond
-	   (node (call-with-system-components f node si) (loop (get-system-link-next node si)))
+	   (node (let ((rval (call-with-system-components f node si)))
+			   (if (not (eq? rval scran-stop-value)) 
+				   (loop (get-system-link-next node si))
+				   #t)))
 	   (#t #t)))))
 
 ;; as in `system-for-each-entity` but the results are collected
