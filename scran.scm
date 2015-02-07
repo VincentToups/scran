@@ -7,6 +7,63 @@
   (newline)
   (force-output))
 
+(define tick-tock-indent " ")
+(define *tick-tock-table* (make-table test: eq?))
+;; (define-macro (dbg-tick-tock tag #!rest body)
+;;   (let ((start-time (gensym 'start-time))
+;; 		(result (gensym 'result))
+;; 		(tag-value (gensym 'tag-value))
+;; 		(hold (gensym 'hold)))
+;; 	`(let ((,start-time (current-time-ms))
+;; 		   (,hold tick-tock-indent)
+;; 		   (,(gensym 'null) (begin (display (list "Entering - " ',tag)) (newline)))
+;; 		   (,result (begin (set! tick-tock-indent (append-strings (list tick-tock-indent tick-tock-indent))) ,@body))
+;; 		   (,tag-value ,tag))
+;; 	   (if ,tag-value 
+;; 		   (begin 
+;; 			 (display tick-tock-indent)
+;; 			 (set! tick-tock-indent ,hold)
+;; 			 (display (list ,tag-value (- (current-time-ms) ,start-time)))
+;; 			 (newline)))
+;; 	   ,result)))
+
+(define (update-tick-tock-table k d)
+  (let ((cv (table-ref *tick-tock-table* k (cons 0 0))))
+	(table-set! *tick-tock-table* k
+				(cons (+ 1 (car cv))
+				 (+ d (cdr cv))))))
+
+(define (print-tick-tock-table)
+  (define (calc-time asc)
+	(let ((data (cdr asc)))
+	  (/ (cdr data) (car data))))
+  (for-each
+   (lambda (asc)
+	 (let ((data (cdr asc))) 
+	   (display (car asc))
+	   (display " : ")
+	   (display (/ (cdr data) (car data)))
+	   (display " : ")
+	   (display data)
+	   (newline))) 
+   (sort (table->list *tick-tock-table*)
+		 (lambda (a b)
+		   (> (calc-time a)
+			  (calc-time b))))))
+
+(define-macro (define-tick-tock name-and-args #!rest body)
+  (let ((start-time (gensym 'start-time))
+		(result (gensym 'result))
+		(tag-value (gensym 'tag-value))
+		(hold (gensym 'hold)))
+	`(define ,name-and-args 
+	   (let ((,start-time (current-time-ms))			 
+			 (,result (begin ,@body)))
+		 (update-tick-tock-table ',(car name-and-args) (- (current-time-ms) ,start-time))
+		 ,result))))
+
+(define (f #!rest x) (+ x 1))
+
 ;; ****************************************
 ;; BEGIN API
 ;; 
@@ -96,6 +153,16 @@
 				 #f)))
 		 entity-systems)
 		(nullify-entity-component! e c))))
+
+;; There is no independent tracking of entities in scran so deleting
+;; an entity amounts to nothing more than removing all of its components
+;; the user must throw away any references so the GC can reclaim the object.
+;; Alternatively, the entity can return to a pool and be reused
+(define (delete! entity)
+  (for-each (lambda (c)
+			  (remove-component! entity c))
+			(get-component-list entity))
+  #f)
 
 ;; Set the entity component c to value v
 ;; it is an error to call this on a nullcomp component.
@@ -485,7 +552,7 @@
 
 ;; returns #t when entity e has tag #t
 (define (entity-has-tag? e tag)
-  (not (eq? nullcomp? (entity-component-raw e tag))))
+  (not (eq? nullcomp (entity-component-raw e tag))))
 
 ;; alias for above
 (define tagged? entity-has-tag?)
@@ -597,6 +664,3 @@
 		(call-with-system-components exit e si)
 		#f)
 	(system-remove si e)))
-
-
-
