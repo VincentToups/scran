@@ -7,62 +7,7 @@
   (newline)
   (force-output))
 
-(define tick-tock-indent " ")
-(define *tick-tock-table* (make-table test: eq?))
-;; (define-macro (dbg-tick-tock tag #!rest body)
-;;   (let ((start-time (gensym 'start-time))
-;; 		(result (gensym 'result))
-;; 		(tag-value (gensym 'tag-value))
-;; 		(hold (gensym 'hold)))
-;; 	`(let ((,start-time (current-time-ms))
-;; 		   (,hold tick-tock-indent)
-;; 		   (,(gensym 'null) (begin (display (list "Entering - " ',tag)) (newline)))
-;; 		   (,result (begin (set! tick-tock-indent (append-strings (list tick-tock-indent tick-tock-indent))) ,@body))
-;; 		   (,tag-value ,tag))
-;; 	   (if ,tag-value 
-;; 		   (begin 
-;; 			 (display tick-tock-indent)
-;; 			 (set! tick-tock-indent ,hold)
-;; 			 (display (list ,tag-value (- (current-time-ms) ,start-time)))
-;; 			 (newline)))
-;; 	   ,result)))
 
-(define (update-tick-tock-table k d)
-  (let ((cv (table-ref *tick-tock-table* k (cons 0 0))))
-	(table-set! *tick-tock-table* k
-				(cons (+ 1 (car cv))
-				 (+ d (cdr cv))))))
-
-(define (print-tick-tock-table)
-  (define (calc-time asc)
-	(let ((data (cdr asc)))
-	  (/ (cdr data) (car data))))
-  (for-each
-   (lambda (asc)
-	 (let ((data (cdr asc))) 
-	   (display (car asc))
-	   (display " : ")
-	   (display (/ (cdr data) (car data)))
-	   (display " : ")
-	   (display data)
-	   (newline))) 
-   (sort (table->list *tick-tock-table*)
-		 (lambda (a b)
-		   (> (calc-time a)
-			  (calc-time b))))))
-
-(define-macro (define-tick-tock name-and-args #!rest body)
-  (let ((start-time (gensym 'start-time))
-		(result (gensym 'result))
-		(tag-value (gensym 'tag-value))
-		(hold (gensym 'hold)))
-	`(define ,name-and-args 
-	   (let ((,start-time (current-time-ms))			 
-			 (,result (begin ,@body)))
-		 (update-tick-tock-table ',(car name-and-args) (- (current-time-ms) ,start-time))
-		 ,result))))
-
-(define (f #!rest x) (+ x 1))
 
 ;; ****************************************
 ;; BEGIN API
@@ -159,9 +104,10 @@
 ;; the user must throw away any references so the GC can reclaim the object.
 ;; Alternatively, the entity can return to a pool and be reused
 (define (delete! entity)
-  (for-each (lambda (c)
-			  (remove-component! entity c))
-			(get-component-list entity))
+  (if entity
+	  (for-each (lambda (c)
+				  (remove-component! entity c))
+				(get-component-list entity)))
   #f)
 
 ;; Set the entity component c to value v
@@ -362,6 +308,16 @@
 	   (node (loop (get-system-link-next node si) (cons (call-with-system-components f node si) out)))
 	   (#t (reverse out))))))
 
+;; Apply f to the entity and appropriate components and collect just the entity if the result is true.
+(define (system-filter-entities f s)
+  (let ((output (list))) 
+	(system-for-each-entity 
+	 (lambda (#!rest args)
+	   (if (apply f rest)
+		   (set! output (cons (car args) output))))
+	 s)
+	(reverse output)))
+
 ;; reduce the entities in system s with reducer f, starting with
 ;; initial value init.
 ;; f takes the accumlator, then the entity, then the
@@ -401,6 +357,36 @@
   (system-map-entities (lambda (e #!rest rest) (entity-id e)) s))
 
 
+;; Count all the entities tracked by scran.
+(define (total-entity-count)
+  (let ((n (vector-length systems)))
+	(let loop ((total 0)
+		  (i 0))
+	  (if (= i n)
+		  total
+		  (loop (+ total (system-count-entities i))
+				(+ i 1))))))
+
+;; This removes all entities from all systems.  Assuming that entities
+;; are not captured by other contexts, this results in the garbage
+;; collection of all entities.
+(define (reset-all-systems!)
+  (let ((n (vector-length systems))) 
+	(let outer-loop ((count (total-entity-count)))
+	  (cond 
+	   ((= count 0)
+		#t)
+	   (else 
+		(let loop ((i 0))
+		  (cond 
+		   ((= i n)
+			#t)
+		   (else
+			;; Save the trouble of all the backtracking logic implied in deleting during traversal.
+			(let ((entities (system-map-entities (lambda (e #!rest ignore) e) i)))
+			  (map delete! entities)
+			  (loop (+ i 1))))))
+		(outer-loop (total-entity-count)))))))
 
 ;; ************************************************
 ;;
@@ -664,3 +650,4 @@
 		(call-with-system-components exit e si)
 		#f)
 	(system-remove si e)))
+
