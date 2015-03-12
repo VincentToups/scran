@@ -528,9 +528,6 @@
 (define (get-component-constructor component)
   (vector-ref components component))
 
-(define-macro (define-component name args #!rest body)
-  `(define ,name (component! (lambda ,args ,@body))))
-
 ;; create a component which takes no values
 ;; useful for tagging things.
 (define (tag!)

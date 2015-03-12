@@ -82,6 +82,11 @@ Kran is oriented towards groups of systems.  Scran exposes systems directly, if 
     (define (execute-group group)
      (map system-execute group))
 
+Macros
+------
+
+In accord with the gambit-c style, we separate out macros for using scran into a separate `macros.scm` file.  Include this directly into your source if you wish to use the macro interface.
+
 
 API Documentation
 -----------------
