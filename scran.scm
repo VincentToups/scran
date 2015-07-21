@@ -21,7 +21,7 @@
 ;; plus the values to initialize the component, and return the component.
 (define (component! constructor)
   (set! components (addv components constructor))
-  (- (vector-length components) 1))
+  (fx- (vector-length components) 1))
 
 ;; create a system.
 
@@ -52,7 +52,7 @@
 										   pre 
 										   post 
 										   every)))
-  (- (vector-length systems) 1))
+  (fx- (vector-length systems) 1))
 
 
 ;; create an entity and optionally add components to it.  
@@ -191,12 +191,12 @@
 		 (scs (system-components (vector-ref systems s)))
 		 (max-n (vector-length ecs)))
 	(letrec ((loop (lambda (i)
-					 (if (< i max-n)
+					 (if (fx< i max-n)
 						 (let ((sc (vector-ref scs i)))
 						   (cond 
-							((not sc) (loop (+ i 1)))
+							((not sc) (loop (fx+ i 1)))
 							((nullcomp? (vector-ref ecs i)) #f)
-							(#t (loop (+ i 1)))))
+							(#t (loop (fx+ i 1)))))
 						 #t))))
 	  (loop 0))))
 
@@ -206,12 +206,12 @@
 		 (scs (system-components (vector-ref systems s)))
 		 (max-n (vector-length ecs)))
 	(letrec ((loop (lambda (i)
-					 (if (< i max-n)
+					 (if (fx< i max-n)
 						 (let ((sc (vector-ref scs i)))
 						   (cond 
-							((not sc) (loop (+ i 1)))
+							((not sc) (loop (fx+ i 1)))
 							((nullcomp? (vector-ref ecs i)) #f)
-							(#t (loop (+ i 1)))))
+							(#t (loop (fx+ i 1)))))
 						 #t))))
 	  (loop 0))))
 
@@ -220,8 +220,8 @@
   (let ((n (vector-length systems)))
 	(letrec ((loop 
 			  (lambda (i o) 
-				(if (< i n)
-					(loop (+ i 1)
+				(if (fx< i n)
+					(loop (fx+ i 1)
 						  (if (entity-in-system? entity i)
 							  (cons i o)
 							  o))
@@ -233,8 +233,8 @@
   (let ((n (vector-length systems)))
 	(letrec ((loop 
 			  (lambda (i o) 
-				(if (< i n)
-					(loop (+ i 1)
+				(if (fx< i n)
+					(loop (fx+ i 1)
 						  (if (not (entity-in-system? entity i))
 							  (cons i o)
 							  o))
@@ -331,7 +331,7 @@
 ;; Return the count of entities in system s
 (define (system-count-entities s)
   (system-reduce-entities (lambda (ac #!rest rest)
-							(+ ac 1))
+							(fx+ ac 1))
 						  s
 						  0))
 
@@ -362,7 +362,7 @@
   (let ((n (vector-length systems)))
 	(let loop ((total 0)
 		  (i 0))
-	  (if (= i n)
+	  (if (fx= i n)
 		  total
 		  (loop (+ total (system-count-entities i))
 				(+ i 1))))))
@@ -374,18 +374,18 @@
   (let ((n (vector-length systems))) 
 	(let outer-loop ((count (total-entity-count)))
 	  (cond 
-	   ((= count 0)
+	   ((fx= count 0)
 		#t)
 	   (else 
 		(let loop ((i 0))
 		  (cond 
-		   ((= i n)
+		   ((fx= i n)
 			#t)
 		   (else
 			;; Save the trouble of all the backtracking logic implied in deleting during traversal.
 			(let ((entities (system-map-entities (lambda (e #!rest ignore) e) i)))
 			  (map delete! entities)
-			  (loop (+ i 1))))))
+			  (loop (fx+ i 1))))))
 		(outer-loop (total-entity-count)))))))
 
 ;; ************************************************
@@ -402,8 +402,8 @@
   (let ((n (vector-length v)))
 	(let loop ((i 0)
 			   (ac init))
-	  (if (< i n)
-		  (loop (+ i 1)
+	  (if (fx< i n)
+		  (loop (fx+ i 1)
 				(f (vector-ref v i) ac))
 		  ac))))
 
@@ -562,8 +562,8 @@
 	(let loop ((i 0)
 			   (out (list)))
 	  (cond 
-	   ((< i n)
-		(loop (+ i 1) 
+	   ((fx< i n)
+		(loop (fx+ i 1) 
 			  (if (not (nullcomp? (vector-ref ecs i)))
 				  (cons i out)
 				  out)))
@@ -601,7 +601,7 @@
 ;; create an empty entity.
 (define (entity-raw!)
   (make-entity 
-   (begin (set! entity-id-counter (+ 1 entity-id-counter))
+   (begin (set! entity-id-counter (fx+ 1 entity-id-counter))
 		  entity-id-counter)
    (make-vector (vector-length components) nullcomp)
    (make-vector (vector-length systems) #f)))
